@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Simple Calculator</title>
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --accent: #2b6ef6;
+            --muted: #6b7280;
+            --shadow: 0 6px 18px rgba(43,110,246,0.08);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+        html,body { height:100%; margin:0; background:var(--bg); display:flex; align-items:center; justify-content:center; }
+        .calculator {
+            width:360px;
+            background:var(--card);
+            border-radius:12px;
+            box-shadow:var(--shadow);
+            padding:20px;
+        }
+        h1 { margin:0 0 12px; font-size:18px; color:#111827; text-align:center; }
+        .row { display:flex; gap:10px; margin-bottom:10px; }
+        input[type="number"] {
+            flex:1;
+            padding:10px 12px;
+            font-size:16px;
+            border:1px solid #e6e9ef;
+            border-radius:8px;
+            outline:none;
+        }
+        select {
+            width:88px;
+            padding:10px 8px;
+            border-radius:8px;
+            border:1px solid #e6e9ef;
+            background:white;
+            font-size:16px;
+        }
+        .controls { display:flex; gap:8px; margin-top:8px; }
+        button {
+            flex:1;
+            padding:10px;
+            border-radius:8px;
+            border:0;
+            background:var(--accent);
+            color:white;
+            font-size:15px;
+            cursor:pointer;
+            transition:transform .08s ease, box-shadow .08s ease;
+        }
+        button.secondary { background:#9ca3af; }
+        button:active { transform:translateY(1px); }
+        .result {
+            margin-top:14px;
+            padding:12px;
+            border-radius:8px;
+            background:#f8fafc;
+            border:1px dashed #e6eefc;
+            color:#0f172a;
+            font-weight:600;
+            text-align:center;
+        }
+        .history {
+            margin-top:12px;
+            max-height:110px;
+            overflow:auto;
+            font-size:13px;
+            color:var(--muted);
+            background:#fff;
+            border-radius:8px;
+            border:1px solid #f0f4ff;
+            padding:8px;
+        }
+        .history-item { padding:6px 4px; border-bottom:1px dashed #f1f5ff; }
+        .history-item:last-child { border-bottom:0; }
+        .muted { color:var(--muted); font-size:13px; text-align:center; margin-top:8px; }
+    </style>
+</head>
+<body>
+    <main class="calculator" role="main">
+        <h1>Simple Calculator</h1>
+
+        <div class="row">
+            <input id="a" type="number" step="any" placeholder="First number" aria-label="First number" />
+            <select id="op" aria-label="Operator">
+                <option value="+">+</option>
+                <option value="-">−</option>
+                <option value="*">×</option>
+                <option value="/">÷</option>
+                <option value="%">%</option>
+            </select>
+            <input id="b" type="number" step="any" placeholder="Second number" aria-label="Second number" />
+        </div>
+
+        <div class="controls">
+            <button id="calc">Calculate</button>
+            <button id="swap" class="secondary" title="Swap operands">Swap</button>
+            <button id="clear" class="secondary">Clear</button>
+        </div>
+
+        <div id="result" class="result" aria-live="polite">Result will appear here</div>
+
+        <div class="muted">Press Enter to calculate</div>
+
+        <div id="history" class="history" aria-label="Calculation history"></div>
+    </main>
+
+    <script>
+        // Elements
+        const aEl = document.getElementById('a');
+        const bEl = document.getElementById('b');
+        const opEl = document.getElementById('op');
+        const calcBtn = document.getElementById('calc');
+        const clearBtn = document.getElementById('clear');
+        const swapBtn = document.getElementById('swap');
+        const resultEl = document.getElementById('result');
+        const historyEl = document.getElementById('history');
+
+        // Helpers
+        function fmt(n) {
+            // show integers without trailing .0
+            return Number.isFinite(n) && Number.isInteger(n) ? String(n) : String(n);
+        }
+
+        function compute(a, b, op) {
+            if (!isFinite(a) || !isFinite(b)) return { error: 'Invalid number' };
+            switch (op) {
+                case '+': return { value: a + b };
+                case '-': return { value: a - b };
+                case '*': return { value: a * b };
+                case '/':
+                    if (b === 0) return { error: 'Division by zero' };
+                    return { value: a / b };
+                case '%':
+                    if (b === 0) return { error: 'Division by zero' };
+                    return { value: a % b };
+                default: return { error: 'Unknown operator' };
+            }
+        }
+
+        function addHistory(entry) {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.textContent = entry;
+            historyEl.prepend(div);
+            // keep max 20 entries
+            while (historyEl.children.length > 20) historyEl.removeChild(historyEl.lastChild);
+        }
+
+        function showResult(text, isError = false) {
+            resultEl.textContent = text;
+            resultEl.style.color = isError ? '#b91c1c' : '#0f172a';
+        }
+
+        // Actions
+        function calculate() {
+            const a = parseFloat(aEl.value);
+            const b = parseFloat(bEl.value);
+            const op = opEl.value;
+
+            const res = compute(a, b, op);
+            if (res.error) {
+                showResult(res.error, true);
+                return;
+            }
+            const value = res.value;
+            showResult(fmt(value));
+            addHistory(`${a} ${op} ${b} = ${fmt(value)}`);
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', () => {
+            aEl.value = '';
+            bEl.value = '';
+            opEl.value = '+';
+            showResult('Result will appear here');
+            historyEl.innerHTML = '';
+        });
+        swapBtn.addEventListener('click', () => {
+            const tmp = aEl.value;
+            aEl.value = bEl.value;
+            bEl.value = tmp;
+        });
+
+        // Keyboard: Enter triggers calculate, Escape clears inputs
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') calculate();
+            if (e.key === 'Escape') {
+                aEl.value = '';
+                bEl.value = '';
+            }
+        });
+
+        // Optionally prefill small demo values
+        aEl.value = '';
+        bEl.value = '';
+    </script>
+</body>
+</html>
